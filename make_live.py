@@ -59,11 +59,14 @@ button.sec{background:#456}
 <script>
 // 兜底帧：外部拉取失败时至少能看到画面
 const FALLBACK="data:image/jpeg;base64,__FALLBACK__";
+// raw 优先：jsdelivr 对 gh 文件缓存很久，会把画面卡在旧帧
+// 沙盒访问 raw 不通，但你手机浏览器能直连，所以放第一位
 const SRC=[
- "https://cdn.jsdelivr.net/gh/__REPO__@main/frame.js",
  "https://raw.githubusercontent.com/__REPO__/main/frame.js",
+ "https://cdn.jsdelivr.net/gh/__REPO__@main/frame.js",
  "https://ghfast.top/https://raw.githubusercontent.com/__REPO__/main/frame.js",
- "https://cdn.jsdelivr.net/gh/__REPO__@main/frame.js?v=2"
+ "https://raw.githack.com/__REPO__/main/frame.js",
+ "https://cdn.statically.io/gh/__REPO__/main/frame.js"
 ];
 const img=document.getElementById('screen');
 const st=document.getElementById('status');
