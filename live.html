@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes">
+<title>元宝的电脑 · 实时画面</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0d0d;color:#eee;font-family:system-ui,-apple-system,sans-serif;
+     display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:8px}
+h1{font-size:15px;margin:5px 0;color:#7cf}
+#wrap{position:relative;width:100%;max-width:1024px}
+#screen{width:100%;display:block;border:1px solid #333;border-radius:6px;background:#000;
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-user-drag:none;touch-action:manipulation}
+#bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:center;
+     margin:8px 0;font-size:13px}
+button{background:#2a6;color:#fff;border:0;border-radius:5px;padding:8px 13px;font-size:14px}
+button.sec{background:#456}
+#status{color:#8a8;min-width:180px;text-align:center;font-variant-numeric:tabular-nums}
+#tip{font-size:12px;color:#777;text-align:center;line-height:1.7;max-width:620px;margin-top:8px}
+#coord{position:absolute;pointer-events:none;font-size:11px;background:#000c;color:#0f0;
+       padding:2px 6px;border-radius:3px;display:none;transform:translate(-50%,-140%)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#555;margin-right:5px}
+.dot.on{background:#0f0;box-shadow:0 0 6px #0f0}
+</style></head><body oncontextmenu="return false">
+<h1>🖥️ 元宝的电脑 · 实时</h1>
+<div id="wrap"><img id="screen" alt="桌面画面"><div id="coord"></div></div>
+<div id="bar">
+  <span id="status"><span class="dot" id="dot"></span>连接中…</span>
+  <button onclick="toggleLive()" id="btnLive">⏸ 暂停</button>
+  <button class="sec" onclick="pull()">🔄 立刻刷新</button>
+  <button class="sec" onclick="toggleCoord()">📍 坐标</button>
+</div>
+<div id="tip">
+画面来自元宝沙盒真实屏幕，每 2 秒自动拉最新一帧<br>
+开「坐标」后手指按画面任意处会显示坐标，把坐标发给元宝，它就能用 xdotool 点击那里
+</div>
+
+<script>
+const SRC = [
+  "https://cdn.jsdelivr.net/gh/mos-a11y/yuanbao-desktop@main/frame.js",
+  "https://ghfast.top/https://raw.githubusercontent.com/mos-a11y/yuanbao-desktop/main/frame.js",
+  "https://raw.githubusercontent.com/mos-a11y/yuanbao-desktop/main/frame.js"
+];
+const img=document.getElementById('screen');
+const st=document.getElementById('status');
+const dot=document.getElementById('dot');
+const cd=document.getElementById('coord');
+const btn=document.getElementById('btnLive');
+let live=true, coordMode=false, si=0, busy=false, lastTs=0;
+
+function trySrc(i, cb){
+  if(i>=SRC.length){ cb(false); return; }
+  const s=document.createElement('script');
+  let done=false;
+  s.onload=()=>{ if(done)return; done=true; s.remove();
+    if(window.LIVE_FRAME && window.LIVE_FRAME.length>200){ si=i; cb(true); } else { trySrc(i+1,cb); } };
+  s.onerror=()=>{ if(done)return; done=true; s.remove(); trySrc(i+1,cb); };
+  s.src=SRC[i]+"?t="+Date.now();
+  document.head.appendChild(s);
+  setTimeout(()=>{ if(!done){ done=true; s.remove(); trySrc(i+1,cb);} }, 6000);
+}
+
+function pull(){
+  if(busy) return; busy=true;
+  trySrc(0, ok=>{
+    busy=false;
+    if(ok && window.LIVE_TS!==lastTs){
+      lastTs=window.LIVE_TS;
+      img.src=window.LIVE_FRAME;
+      dot.className='dot on';
+      const d=new Date(window.LIVE_TS*1000);
+      st.innerHTML='<span class="dot on"></span>更新于 '+d.toLocaleTimeString();
+    } else if(!ok){
+      dot.className='dot';
+      st.innerHTML='<span class="dot"></span>取帧失败，重试中…';
+    }
+  });
+}
+
+function toggleLive(){
+  live=!live;
+  btn.textContent = live ? '⏸ 暂停' : '▶ 继续';
+  if(live){ clearInterval(T); T=setInterval(pull,2000); pull(); }
+  else { clearInterval(T); }
+}
+
+function toggleCoord(){
+  coordMode=!coordMode;
+  img.style.cursor=coordMode?'crosshair':'default';
+  if(coordMode) st.innerHTML='<span class="dot"></span>坐标模式：按住画面';
+}
+
+function toXY(e){
+  const r=img.getBoundingClientRect();
+  const sx=img.naturalWidth||1024, sy=img.naturalHeight||640;
+  return [Math.round((e.clientX-r.left)/r.width*sx),
+          Math.round((e.clientY-r.top)/r.height*sy)];
+}
+img.addEventListener('pointerdown', function(e){
+  if(!coordMode) return;
+  const [x,y]=toXY(e);
+  cd.style.display='block';
+  cd.style.left=((e.clientX-r_left(e))/r_width(e)*100)+'%';
+  cd.style.top=((e.clientY-r_top(e))/r_height(e)*100)+'%';
+  cd.textContent=x+','+y;
+  st.textContent='坐标 '+x+','+y+' → 发给元宝';
+});
+function r_left(e){ return img.getBoundingClientRect().left; }
+function r_top(e){ return img.getBoundingClientRect().top; }
+function r_width(e){ return img.getBoundingClientRect().width; }
+function r_height(e){ return img.getBoundingClientRect().height; }
+
+let T=setInterval(pull,2000);
+pull();
+</script></body></html>
