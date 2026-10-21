@@ -45,6 +45,46 @@
 | `alive.py` | 精确进程存活判定（修 `pgrep -f` 匹配自身的坑） |
 | `docs/` | 人格设定、回复规则、踩坑记录 |
 
+
+## 双向实时（当前主方案）
+
+`bridge.py` + `index.html` 组成完整闭环：
+
+```
+上行  沙盒 scrot 截图 ──PUT──▶ frame.js ──fetch──▶ 用户浏览器 <img>
+下行  用户手指按画面 ──PUT──▶ click.txt ──轮询──▶ bridge.py ──▶ xdotool click
+```
+
+GitHub 仓库当总线。沙盒入站封死，但两边都能读写 GitHub，所以能双向。
+
+### 跑起来
+
+```bash
+export GH_TOKEN=ghp_xxxx
+python3 bridge.py            # 推帧 + 收坐标，一直跑
+```
+
+浏览器打开 `index.html`（或 GitHub Pages 地址），手指按住画面任意处，
+坐标自动写回仓库，沙盒 2 秒内执行点击，下一帧就能看到结果。
+
+### Token 说明
+
+- `python3 make_bridge_page.py 1500`          生成**注入 token** 的版本（自己用，打开即用）
+- `python3 make_bridge_page.py 1500 --public` 生成**不含 token** 的版本（开源/部署用）
+
+公开版首次打开会弹框让你填自己的 token，存在 localStorage。
+**开源时务必用 `--public`**，否则 token 会泄露（GitHub 也会直接拒绝含密钥的提交）。
+
+### 动作切换
+
+页面可切 左键单击 / 右键单击 / 只移动鼠标。`click.txt` 格式：`x,y,action,timestamp`。
+坐标按 1024x640 显示尺寸记录，沙盒端按比例还原到 1280x800 真实尺寸。
+
+### 为什么之前"不是实时"
+
+jsDelivr 对 GitHub 文件有长缓存（数小时），画面会卡在旧帧。
+已把 `raw.githubusercontent.com` 提到首位 —— 无缓存，且用户网络能直连。
+
 ## 快速开始
 
 ### 1. 起桌面
