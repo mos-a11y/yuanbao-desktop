@@ -205,6 +205,10 @@ def shot_b64():
 
 
 if __name__ == "__main__":
+    public = "--public" in sys.argv
+    if public:
+        TOKEN = ""   # 公开版不内嵌 token，页面会弹框让用户填
+        OUT = "/data/workspace/index.html"
     ms = int(sys.argv[1]) if len(sys.argv) > 1 else 1500
     b64 = shot_b64()
     if not b64:
